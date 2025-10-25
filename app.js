@@ -1,69 +1,79 @@
 let listaNumerosSorteados = [];
-let numeroMaximo = 1000
+let numeroMaximo = 100;
 let numeroSecreto = gerarNumeroAleatorio();
-let tentativas = 1
+let tentativas = 1;
 
-function exibirTextoNaTela(tag, texto) {
-    let campo = document.querySelector(tag);
-    campo.innerHTML = texto;
-    responsiveVoice.speak(texto, 'Brazilian Portuguese Male', {rate:1.1});
+function falar(texto) {
+  if (window.responsiveVoice)
+    responsiveVoice.speak(texto, 'Brazilian Portuguese Male', { rate: 1.1 });
 }
 
-function exibirMensagemInicial (){
-    exibirTextoNaTela('h1', 'Jogo do número secreto');
-    exibirTextoNaTela('p', `Digite um número entre 1 e ${numeroMaximo}`);
-
-}
-
-exibirMensagemInicial()
-
-function verificarChute(){
-    let chute = document.querySelector('input').value;
-    console.log (chute == numeroSecreto);
-
-    if (chute == numeroSecreto){
-        exibirTextoNaTela('h1', 'Isso ai você acertou o número secreto');
-        let palavraTentativa = tentativas > 1 ? 'tentativas':'tentativa';
-        let mensagemTentativas = `Parabéns você acertou com ${tentativas} ${palavraTentativa}.`
-        exibirTextoNaTela ('p', mensagemTentativas);
-        document.getElementById('reiniciar').removeAttribute('disabled');
-    } else {
-        if (chute > numeroSecreto){
-            exibirTextoNaTela('p', 'o número secreto é menor');
-        } else {
-            exibirTextoNaTela('p', 'o número secreto é maior');
-        }
-        tentativas++;
-        limparCampo();
-    }
+function exibirMensagem(texto) {
+  document.getElementById("mensagem").innerHTML = texto;
+  falar(texto);
 }
 
 function gerarNumeroAleatorio() {
-    let numeroEscolhido = parseInt(Math.random() * numeroMaximo + 1);
-    let quantidadeElementosNaLista = listaNumerosSorteados.length;
-
-
-
-    if (listaNumerosSorteados.includes(numeroEscolhido)){
-        return gerarNumeroAleatorio();
-    } else {
-        listaNumerosSorteados.push(numeroEscolhido);
-        console.log(listaNumerosSorteados)
-        return numeroEscolhido;
-    }
+  let numero = parseInt(Math.random() * numeroMaximo + 1);
+  if (listaNumerosSorteados.includes(numero)) return gerarNumeroAleatorio();
+  listaNumerosSorteados.push(numero);
+  return numero;
 }
 
-function limparCampo(){
-    chute = document.querySelector('input');
-    chute.value = '';
-} 
+function verificarChute() {
+  const chute = Number(document.getElementById('entrada').value);
+  if (!chute) return;
+
+  if (chute === numeroSecreto) {
+    exibirMensagem(`🎉 Você acertou em ${tentativas} ${tentativas > 1 ? 'tentativas' : 'tentativa'}!`);
+    document.getElementById('reiniciar').disabled = false;
+
+    setTimeout(() => {
+      const nome = prompt("Digite seu nome para o ranking:");
+      if (nome && nome.trim() !== "") {
+        salvarRanking(nome.trim(), tentativas);
+        exibirRanking();
+      }
+    }, 500);
+  } else if (chute > numeroSecreto) {
+    exibirMensagem('🔻 O número secreto é menor!');
+  } else {
+    exibirMensagem('🔺 O número secreto é maior!');
+  }
+  tentativas++;
+  document.getElementById('entrada').value = '';
+}
 
 function reiniciarJogo() {
-    numeroSecreto = gerarNumeroAleatorio()
-    limparCampo();
-    tentativas = 1
-    exibirMensagemInicial()
-    document.getElementById('reiniciar').setAttribute('disabled',true);
+  numeroSecreto = gerarNumeroAleatorio();
+  tentativas = 1;
+  document.getElementById('entrada').value = '';
+  document.getElementById('mensagem').innerHTML = 'Novo jogo iniciado!';
+  document.getElementById('reiniciar').disabled = true;
 }
-//Adivinhe o <span class="container__texto-azul">numero secreto</span>
-//Escolha um número entre 1 a 10
+
+// ===== RANKING LOCAL =====
+function salvarRanking(nome, pontuacao) {
+  let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
+  ranking.push({ nome, pontuacao });
+  ranking.sort((a, b) => a.pontuacao - b.pontuacao);
+  ranking = ranking.slice(0, 10);
+  localStorage.setItem("ranking", JSON.stringify(ranking));
+}
+
+function exibirRanking() {
+  const ranking = JSON.parse(localStorage.getItem("ranking")) || [];
+  const lista = document.getElementById("ranking-lista");
+  lista.innerHTML = ranking
+    .map((r, i) => `<li><span>${i + 1}º</span> ${r.nome} — <strong>${r.pontuacao} tentativas</strong></li>`)
+    .join("");
+}
+
+function limparRanking() {
+  if (confirm("Deseja apagar o ranking?")) {
+    localStorage.removeItem("ranking");
+    exibirRanking();
+  }
+}
+
+exibirRanking();
